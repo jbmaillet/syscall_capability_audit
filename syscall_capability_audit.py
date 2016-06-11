@@ -478,6 +478,15 @@ class ColorCode:
     RED = '\033[91m'
     NEUTRAL = '\033[0m'
 
+def syscall_listing():
+    for call in SYSCALLS:
+        if call.require:
+            print("%s: %s"
+                  % (call.syscall, call.require))
+        if call.may_require:
+            print("%s: may require %s"
+                  % (call.syscall, call.may_require))
+
 def sanitize_ignored(ignored_list):
     for call in ignored_list:
         if call in CANNOT_IGNORE:
@@ -493,8 +502,12 @@ def main():
     parser = argparse.ArgumentParser(description='Scan source code for syscalls requiring capabilities.')
     parser.add_argument('-d',
                         '--directory',
-                        help='top level source code directory',
+                        help='Top level source code directory.',
                         metavar='topleveldir', type=str)
+    parser.add_argument('-l',
+                        '--listing',
+                        help='List managed syscalls and corresponding capabilities.',
+                        action='store_true')
     parser.add_argument('-i',
                         '--ignore',
                         help="""Comma separated list of syscalls to ignore
@@ -505,7 +518,7 @@ def main():
                         metavar='ig1,ig2,...', type=str)
     parser.add_argument('-v',
                         '--verbose',
-                        help='increase processing verbosity',
+                        help='Increase processing verbosity.',
                         action='store_true')
     if len(sys.argv) == 1:
         parser.print_help()
@@ -517,6 +530,10 @@ def main():
     else:
         verbosity = logging.INFO
     logging.basicConfig(format='%(levelname)s:%(message)s', level=verbosity)
+
+    if args.listing:
+        syscall_listing()
+        sys.exit(0)
 
     ignored = args.ignore.split(',')
     ignored = sanitize_ignored(ignored)
