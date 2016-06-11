@@ -443,6 +443,20 @@ SYSCALLS = (
     # TODO pthread_setschedprio(3)
 )
 
+CANNOT_IGNORE = (
+    'system',
+    'syscall',
+    'execl',
+    'execlp',
+    'execle',
+    'execv',
+    'execvp',
+    'execvpe',
+    'execve',
+    'execveat',
+    'fexecve'
+)
+
 SRC_FILES_SUFFIXES = (
     '.c', '.h',
     '.cpp', '.hpp',
@@ -464,6 +478,13 @@ class ColorCode:
     RED = '\033[91m'
     NEUTRAL = '\033[0m'
 
+def sanitize_ignored(ignored_list):
+    for call in ignored_list:
+        if call in CANNOT_IGNORE:
+            print("WARNING:'%s' cannot be ignored - removing from list of ignored calls" % call)
+    ignore = [call for call in ignored_list if call not in CANNOT_IGNORE]
+    return ignore
+
 def is_source(file):
     _, file_extension = os.path.splitext(file)
     return file_extension in SRC_FILES_SUFFIXES
@@ -474,6 +495,14 @@ def main():
                         '--directory',
                         help='top level source code directory',
                         metavar='topleveldir', type=str)
+    parser.add_argument('-i',
+                        '--ignore',
+                        help="""Comma separated list of syscalls to ignore
+                        This may be usefull if source code uses custom function or method
+                        named the same way as syscalls, or if you prefer not to get output
+                        for potentialy noisy syscalls such as open(), socket(), or ioctl().
+                        system(3), syscall(2) and the exec*(2) family cannot be ignored.""",
+                        metavar='ig1,ig2,...', type=str)
     parser.add_argument('-v',
                         '--verbose',
                         help='increase processing verbosity',
@@ -488,6 +517,9 @@ def main():
     else:
         verbosity = logging.INFO
     logging.basicConfig(format='%(levelname)s:%(message)s', level=verbosity)
+
+    ignored = args.ignore.split(',')
+    ignored = sanitize_ignored(ignored)
 
     if not os.path.isdir(args.directory) or not os.access(args.directory, os.R_OK):
         logging.error("Could not open directory '%s', aborting.", args.directory)
@@ -512,6 +544,8 @@ def main():
             # to get a summary file by file, syscall by syscall, all lines matching a syscall?
             for linenum, line in enumerate(lines):
                 for call in SYSCALLS:
+                    if call.syscall in ignored:
+                        continue
                     # very inefficient to recreate a regexp each time
                     pattern = r'\b' + call.syscall + r'\b' + r'\s*\('   # r'\('
                     if re.search(pattern, line):
