@@ -7,7 +7,16 @@ import logging
 import re
 import collections
 
-# Best test case: busybox source code
+# Good test cases:
+# busybox
+# dropbear
+
+# Examples of false positive:
+# ./netio.c:416:			TRACE(("socket() failed"))
+
+# TODO add a 'ignore' CLI option list - some calls like socket() can be too noisy when starting from scratch
+
+# TODO add an option to process 1/ either file by file + line by line, OR 2/ syscall by syscall on all sources
 
 # TODO
 # See Dive into Python 3 chap. 6 for inspiration
@@ -17,18 +26,25 @@ import collections
 Syscall = collections.namedtuple('syscall', 'syscall require may_require')
 
 WARNING_NO_HINT = 'this tool cannot provide any hint about which capabilities may be needed here'
-WARNING_EXEC_FAMILY = 'WARNING: the exec() family may execute anything - ' + WARNING_NO_HINT
+WARNING_EXEC_FAMILY = 'WARNING: the exec* family syscalls may execute anything - ' + WARNING_NO_HINT
 
 # Information tediously gathered via
 # capabilities(7) and "man -wK CAP_FOOBAR | grep man2"
 # man -wK CAP_ | grep man2 | sort | uniq
 SYSCALLS = (
 
-    # First, a few non-syscalls yet very important stuff to catch:
+    # First, not a syscall yet very important to catch:
 
     Syscall('system',
             'WARNING: system() may execute anything - ' + WARNING_NO_HINT,
             None),
+
+    # Now for the actual syscalls
+    # man pages section 2 - System calls (functions provided by the kernel)
+    # All the value of this tool is in this list. Keep it tidy!
+
+    # First the "open door" ones
+
     Syscall('syscall',
             'WARNING: syscall() may be any syscall - ' + WARNING_NO_HINT,
             None), # we don't care about the obsolete _syscallX
@@ -44,13 +60,8 @@ SYSCALLS = (
     Syscall('execveat', WARNING_EXEC_FAMILY, None),
     Syscall('fexecve', WARNING_EXEC_FAMILY, None),
 
-    # Now for the actual syscalls
+    # Now for the other syscalls, in alphabetical order
 
-    # man pages section 2 - System calls (functions provided by the kernel)
-    # All the value of this tool is in this list. Keep it tidy!
-    # - number one goal is to be exhaustive
-    # - syscall must be listed by alphabetical order
-    # - capabilities should be listed in the same order they appear in capabilities(7) # TODO
     Syscall('acct',
             'CAP_SYS_PACCT',
             None),
@@ -69,9 +80,6 @@ SYSCALLS = (
     Syscall('capset',
             'CAP_SETPCAP',
             None),
-    Syscall('chattr',
-            None,
-            'CAP_LINUX_IMMUTABLE CAP_SYS_RESOURCE CAP_FOWNER'),
     Syscall('chmod',
             None,
             'CAP_FOWNER CAP_FSETID'),
@@ -84,6 +92,9 @@ SYSCALLS = (
     Syscall('clone',
             None,
             'CAP_SYS_ADMIN,  Linux < 3.8: CAP_SYS_ADMIN CAP_SETUID CAP_SETGID'),
+    Syscall('creat',
+            None,
+            'CAP_FOWNER'),
     Syscall('create_module',
             'CAP_SYS_MODULE',
             None),
@@ -96,15 +107,24 @@ SYSCALLS = (
     Syscall('fanotify_init',
             'CAP_SYS_ADMIN',
             None),
+    Syscall('fchmod',
+            None,
+            'CAP_FOWNER CAP_FSETID'),
+    Syscall('fchmodat',
+            None,
+            'CAP_FOWNER CAP_FSETID'),
+    Syscall('fchown',
+            'CAP_CHOWN',
+            None),
     Syscall('fcntl',
+            None,
+            'CAP_LEASE CAP_SYS_RESOURCE CAP_FOWNER'),
+    Syscall('fcntl64',
             None,
             'CAP_LEASE CAP_SYS_RESOURCE CAP_FOWNER'),
     Syscall('finit_module',
             'CAP_SYS_MODULE',
             None),
-    Syscall('get_robust_list',
-            None,
-            'CAP_SYS_PTRACE'),
     Syscall('getpriority',
             None,
             'CAP_SYS_NICE'),
@@ -145,6 +165,12 @@ SYSCALLS = (
     Syscall('killpg',
             None,
             'CAP_KILL'),
+    Syscall('klogctl',
+            None,
+            'CAP_SYS_ADMIN (or better: CAP_SYSLOG)'),
+    Syscall('lchown',
+            'CAP_CHOWN',
+            None),
     Syscall('lookup_dcookie',
             'CAP_SYS_ADMIN',
             None),
@@ -160,17 +186,16 @@ SYSCALLS = (
     Syscall('mknod',
             None,
             'CAP_MKNOD'),
-    Syscall('mlock',
+    Syscall('mknodat',
             None,
-            'CAP_IPC_LOCK'),
-    Syscall('mlockall',
+            'CAP_MKNOD'),
+    Syscall('mlock',
             None,
             'CAP_IPC_LOCK'),
     Syscall('mlock2',
             None,
             'CAP_IPC_LOCK'),
-    Syscall('mmap',
-            # not sure about this one - mentionned in capabilities(7), but nothing in mmap(2)
+    Syscall('mlockall',
             None,
             'CAP_IPC_LOCK'),
     Syscall('mount',
@@ -195,10 +220,6 @@ SYSCALLS = (
             None,
             'CAP_IPC_LOCK'),
     Syscall('munlockall',
-            None,
-            'CAP_IPC_LOCK'),
-    Syscall('munmap',
-            # not sure about this one - mentionned in capabilities(7), but nothing in mmap(2)
             None,
             'CAP_IPC_LOCK'),
     Syscall('nfsservctl',
@@ -298,8 +319,12 @@ SYSCALLS = (
             # stricly speaking, this is not required - but for any meaningful use, it is
             'CAP_SETUID',
             None),
-    # TODO 'setfsgid' is a tricky and not too usefull case
-    # TODO 'setfsuid' is a tricky and not too usefull case
+    Syscall('setfsgid',
+            'CAP_SETGID',
+            None),
+    Syscall('setfsuid',
+            'CAP_SETUID',
+            None),
     Syscall('setgid',
             # stricly speaking, this is not required - but for any meaningful use, it is
             'CAP_SETGID',
@@ -346,13 +371,19 @@ SYSCALLS = (
             # stricly speaking, this is not required - but for any meaningful use, it is
             'CAP_SETUID',
             None),
+    Syscall('set_robust_list',
+            None,
+            'CAP_SYS_PTRACE'),
     Syscall('shmctl',
             None,
             'CAP_IPC_OWNER CAP_SYS_ADMIN'),
     Syscall('shmget',
             None,
             'CAP_IPC_LOCK CAP_IPC_OWNER'),
-    Syscall('shmop',
+    Syscall('shmat',
+            None,
+            'CAP_IPC_OWNER'),
+    Syscall('shmdt',
             None,
             'CAP_IPC_OWNER'),
     Syscall('sigqueue',
@@ -374,13 +405,16 @@ SYSCALLS = (
     Syscall('swapon',
             'CAP_SYS_ADMIN',
             None),
-    Syscall('syslog',
-            None,
-            'CAP_SYS_ADMIN (or better: CAP_SYSLOG)'),
     Syscall('umount',
             'CAP_SYS_ADMIN',
             None),
+    Syscall('umount2',
+            'CAP_SYS_ADMIN',
+            None),
     Syscall('unlink',
+            None,
+            'CAP_FOWNER'),
+    Syscall('unlinkat',
             None,
             'CAP_FOWNER'),
     Syscall('unshare',
@@ -397,9 +431,12 @@ SYSCALLS = (
             None),
     Syscall('vm86', # specific to 32-bit Intel processors
             None,
+            'CAP_SYS_ADMIN'),
+    Syscall('vm86old', # specific to 32-bit Intel processors
+            None,
             'CAP_SYS_ADMIN')
 
-    # TODO these are not documented capability wyse - see xattr(7)
+    # TODO these are not documented capability wise - see xattr(7)
     # getxattr(2), listxattr(2), removexattr(2), setxattr(2)
 
     # TODO pthread_setschedparam(3)
@@ -482,7 +519,7 @@ def main():
                               % (fpath, linenum + 1, line), end='')
                         if call.require:
                             print(ColorCode.RED, end='')
-                            print("syscall '%s' require %s"
+                            print("syscall '%s': %s"
                                   % (call.syscall, call.require))
                             print(ColorCode.NEUTRAL, end='')
                         if call.may_require:
@@ -490,7 +527,7 @@ def main():
                             print("syscall '%s' may require %s"
                                   % (call.syscall, call.may_require))
                             print(ColorCode.NEUTRAL, end='')
-    print("Done processing files in %s." % args.directory)
+    print("Done processing files in '%s'." % args.directory)
 
 
 if __name__ == "__main__":
