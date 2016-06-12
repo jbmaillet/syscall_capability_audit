@@ -15,7 +15,6 @@ import collections
 # dropbear: no parameter + inside string: ./netio.c:416: TRACE(("socket() failed"))
 
 # TODO add an option to process 1/ either file by file + line by line, OR 2/ syscall by syscall on all sources
-# TODO add an option to only list compulsory capabilities
 # TODO selfcheck: build a list of all capabilities, check if some are not handled here
 
 WARNING_NO_HINT = 'this tool cannot provide any hint about which capabilities may be needed here'
@@ -309,7 +308,7 @@ SYSCALLS = (
      'CAP_SYS_ADMIN',
      None],
     ['seteuid',
-     # stricly speaking, this is not required - but for any meaningful use, it is
+     # strictly speaking, this is not required - but for any meaningful use, it is
      'CAP_SETUID',
      None],
     ['setfsgid',
@@ -319,7 +318,7 @@ SYSCALLS = (
      'CAP_SETUID',
      None],
     ['setgid',
-     # stricly speaking, this is not required - but for any meaningful use, it is
+     # strictly speaking, this is not required - but for any meaningful use, it is
      'CAP_SETGID',
      None],
     ['setgroups',
@@ -336,19 +335,19 @@ SYSCALLS = (
      None,
      'CAP_SYS_NICE'],
     ['setreuid',
-     # stricly speaking, this is not required - but for any meaningful use, it is
+     # strictly speaking, this is not required - but for any meaningful use, it is
      'CAP_SETUID',
      None],
     ['setregid',
-     # stricly speaking, this is not required - but for any meaningful use, it is
+     # strictly speaking, this is not required - but for any meaningful use, it is
      'CAP_SETGID',
      None],
     ['setresuid',
-     # stricly speaking, this is not required - but for any meaningful use, it is
+     # strictly speaking, this is not required - but for any meaningful use, it is
      'CAP_SETUID',
      None],
     ['setresgid',
-     # stricly speaking, this is not required - but for any meaningful use, it is
+     # strictly speaking, this is not required - but for any meaningful use, it is
      'CAP_SETGID',
      None],
     ['setrlimit',
@@ -361,7 +360,7 @@ SYSCALLS = (
      'CAP_SYS_TIME',
      None],
     ['setuid',
-     # stricly speaking, this is not required - but for any meaningful use, it is
+     # strictly speaking, this is not required - but for any meaningful use, it is
      'CAP_SETUID',
      None],
     ['set_robust_list',
@@ -502,6 +501,13 @@ def main():
                         '--listing',
                         help='List managed syscalls and corresponding capabilities.',
                         action='store_true')
+    parser.add_argument('-m',
+                        '--mandatory_only',
+                        help="""Output only syscalls for which a capability is madatory.
+                        Note that this will also include system(3), syscall(2) and the exec*(2) family,
+                        for which no capability is strictly speaking mandatory, but which always require careful inspection.
+                        This will also include calls such as to set*uid(2) and set*gid(2), which for any meaningful purpose require capabilities too.""",
+                        action='store_true')
     parser.add_argument('-i',
                         '--ignore',
                         help="""Comma separated list of syscalls to ignore
@@ -566,6 +572,8 @@ def main():
             # to get a summary file by file, syscall by syscall, all lines matching a syscall?
             for linenum, line in enumerate(lines):
                 for call in syscalls:
+                    if args.mandatory_only and not call.require:
+                        continue
                     if call.syscall in ignored:
                         continue
                     if call.regexp_pattern.search(line):

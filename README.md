@@ -15,6 +15,14 @@ Static code analysis tool, listing Linux system calls capability requirements.
 	  -d topleveldir, --directory topleveldir
 	                        Top level source code directory.
 	  -l, --listing         List managed syscalls and corresponding capabilities.
+	  -m, --mandatory_only  Output only syscalls for which a capability is
+	                        madatory. Note that this will also include system(3),
+	                        syscall(2) and the exec*(2) family, for which no
+	                        capability is strictly speaking mandatory, but which
+	                        always require careful inspection. This will also
+	                        include calls such as to set*uid(2) and set*gid(2),
+	                        which for any meaningful purpose require capabilities
+	                        too.
 	  -i ig1,ig2,..., --ignore ig1,ig2,...
 	                        Comma separated list of syscalls to ignore This may be
 	                        usefull if source code uses custom function or method
