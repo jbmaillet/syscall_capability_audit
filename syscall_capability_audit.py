@@ -15,12 +15,8 @@ import collections
 # dropbear: no parameter + inside string: ./netio.c:416: TRACE(("socket() failed"))
 
 # TODO add an option to process 1/ either file by file + line by line, OR 2/ syscall by syscall on all sources
+# TODO add an option to only list compulsory capabilities
 # TODO selfcheck: build a list of all capabilities, check if some are not handled here
-
-# TODO
-# See Dive into Python 3 chap. 6 for inspiration
-# "Code is code, data is data, and life is good"
-# http://www.diveintopython3.net/generators.html
 
 WARNING_NO_HINT = 'this tool cannot provide any hint about which capabilities may be needed here'
 WARNING_EXEC_FAMILY = 'WARNING: the exec* syscalls family may execute anything - ' + WARNING_NO_HINT
@@ -511,7 +507,7 @@ def main():
                         help="""Comma separated list of syscalls to ignore
                         This may be usefull if source code uses custom function or method
                         named the same way as syscalls, or if you prefer not to get output
-                        for potentialy noisy syscalls such as open(), socket(), or ioctl().
+                        for potentialy noisy syscalls such as open(2), socket(2), or ioctl(2).
                         system(3), syscall(2) and the exec*(2) family cannot be ignored.""",
                         metavar='ig1,ig2,...', type=str)
     parser.add_argument('-v',

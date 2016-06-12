@@ -20,7 +20,7 @@ Static code analysis tool, listing Linux system calls capability requirements.
 	                        usefull if source code uses custom function or method
 	                        named the same way as syscalls, or if you prefer not
 	                        to get output for potentialy noisy syscalls such as
-	                        open(), socket(), or ioctl(). system(3), syscall(2)
+	                        open(2), socket(2), or ioctl(2). system(3), syscall(2)
 	                        and the exec*(2) family cannot be ignored.
 	  -v, --verbose         Increase processing verbosity.
 
