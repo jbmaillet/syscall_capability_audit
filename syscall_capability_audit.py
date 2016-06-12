@@ -11,8 +11,8 @@ import collections
 # busybox
 # dropbear
 
-# Examples of false positive:
-# ./netio.c:416:			TRACE(("socket() failed"))
+# Examples of false positives:
+# dropbear: no parameter + inside string: ./netio.c:416: TRACE(("socket() failed"))
 
 # TODO add a 'ignore' CLI option list - some calls like socket() can be too noisy when starting from scratch
 
@@ -535,8 +535,10 @@ def main():
         syscall_listing()
         sys.exit(0)
 
-    ignored = args.ignore.split(',')
-    ignored = sanitize_ignored(ignored)
+    ignored = []
+    if args.ignore:
+        ignored = args.ignore.split(',')
+        ignored = sanitize_ignored(ignored)
 
     if not os.path.isdir(args.directory) or not os.access(args.directory, os.R_OK):
         logging.error("Could not open directory '%s', aborting.", args.directory)
