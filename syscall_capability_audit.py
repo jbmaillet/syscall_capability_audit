@@ -16,6 +16,8 @@ import collections
 
 # TODO add an option to process 1/ either file by file + line by line, OR 2/ syscall by syscall on all sources
 # TODO selfcheck: build a list of all capabilities, check if some are not handled here
+# CAP_IPC_OWNER "Bypass permission checks for operations on System V IPC objects" require more investigations, per IPC
+# TODO also search for the peculiar path listed in capabilities(7)? ex /proc/kcore /dev/mem /dev/kmem
 
 WARNING_NO_HINT = 'this tool cannot provide any hint about which capabilities may be needed here'
 WARNING_EXEC_FAMILY = 'WARNING: the exec* syscalls family may execute anything - ' + WARNING_NO_HINT
@@ -503,7 +505,7 @@ def main():
                         action='store_true')
     parser.add_argument('-m',
                         '--mandatory_only',
-                        help="""Output only syscalls for which a capability is madatory.
+                        help="""Output only syscalls for which a capability is mandatory.
                         Note that this will also include system(3), syscall(2) and the exec*(2) family,
                         for which no capability is strictly speaking mandatory, but which always require careful inspection.
                         This will also include calls such as to set*uid(2) and set*gid(2), which for any meaningful purpose require capabilities too.""",
@@ -511,7 +513,7 @@ def main():
     parser.add_argument('-i',
                         '--ignore',
                         help="""Comma separated list of syscalls to ignore
-                        This may be usefull if source code uses custom function or method
+                        This may be useful if source code uses custom functions or methods
                         named the same way as syscalls, or if you prefer not to get output
                         for potentialy noisy syscalls such as open(2), socket(2), or ioctl(2).
                         system(3), syscall(2) and the exec*(2) family cannot be ignored.""",

@@ -16,7 +16,7 @@ Static code analysis tool, listing Linux system calls capability requirements.
 	                        Top level source code directory.
 	  -l, --listing         List managed syscalls and corresponding capabilities.
 	  -m, --mandatory_only  Output only syscalls for which a capability is
-	                        madatory. Note that this will also include system(3),
+	                        mandatory. Note that this will also include system(3),
 	                        syscall(2) and the exec*(2) family, for which no
 	                        capability is strictly speaking mandatory, but which
 	                        always require careful inspection. This will also
@@ -25,7 +25,7 @@ Static code analysis tool, listing Linux system calls capability requirements.
 	                        too.
 	  -i ig1,ig2,..., --ignore ig1,ig2,...
 	                        Comma separated list of syscalls to ignore This may be
-	                        usefull if source code uses custom function or method
+	                        useful if source code uses custom functions or methods
 	                        named the same way as syscalls, or if you prefer not
 	                        to get output for potentialy noisy syscalls such as
 	                        open(2), socket(2), or ioctl(2). system(3), syscall(2)
